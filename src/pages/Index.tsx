@@ -16,7 +16,7 @@ import {
   getSolvedCube,
   applyMove
 } from '@/lib/kociemba';
-import { Box, Shuffle, Palette, Play } from 'lucide-react';
+import { Box, Palette, Play } from 'lucide-react';
 
 const Index = () => {
   const [cubeState, setCubeState] = useState<CubeState>(getSolvedCube());
@@ -121,33 +121,6 @@ const Index = () => {
     toast('Solution reset to starting position');
   };
 
-  const generateRandomScramble = () => {
-    const moves: Move[] = ['U', 'U\'', 'U2', 'D', 'D\'', 'D2', 'F', 'F\'', 'F2', 'B', 'B\'', 'B2', 'L', 'L\'', 'L2', 'R', 'R\'', 'R2'];
-    const scrambleLength = 20;
-    let currentCube = getSolvedCube();
-    
-    for (let i = 0; i < scrambleLength; i++) {
-      const randomMove = moves[Math.floor(Math.random() * moves.length)];
-      currentCube = applyMove(currentCube, randomMove);
-    }
-    
-    // Update input values based on scrambled cube
-    const newInputValues = {
-      U: currentCube.U.map(c => c.toLowerCase()).join(''),
-      D: currentCube.D.map(c => c.toLowerCase()).join(''),
-      F: currentCube.F.map(c => c.toLowerCase()).join(''),
-      B: currentCube.B.map(c => c.toLowerCase()).join(''),
-      L: currentCube.L.map(c => c.toLowerCase()).join(''),
-      R: currentCube.R.map(c => c.toLowerCase()).join(''),
-    };
-    
-    setInputValues(newInputValues);
-    setCubeState(currentCube);
-    setSolution([]);
-    setCurrentStep(0);
-    setIsPlaying(false);
-    toast.success('Random scramble generated');
-  };
 
   return (
     <div className="min-h-screen bg-background p-4">
@@ -245,14 +218,6 @@ const Index = () => {
                   <Play className="w-4 h-4" />
                   Solve Cube
                 </Button>
-                <Button 
-                  variant="outline" 
-                  onClick={generateRandomScramble}
-                  className="flex items-center gap-2"
-                >
-                  <Shuffle className="w-4 h-4" />
-                  Random Scramble
-                </Button>
               </div>
             </Card>
 
@@ -265,7 +230,7 @@ const Index = () => {
                 <p>3. <strong>Apply Colors</strong> to update the 3D cube</p>
                 <p>4. <strong>Solve Cube</strong> to generate solution moves</p>
                 <p>5. Use <strong>playback controls</strong> to watch the solution</p>
-                <p>6. Try <strong>Random Scramble</strong> for a quick test</p>
+                
               </div>
             </Card>
           </div>

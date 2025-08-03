@@ -83,11 +83,11 @@ export function RubiksCube3D({ cubeState, isAnimating = false, currentMove }: Ru
             colors.back = cubeState.B[index] || 'W';
           }
           if (x === -1) { // Left face
-            const index = (1 - y) * 3 + (1 - z);
+            const index = (1 - y) * 3 + (z + 1);
             colors.left = cubeState.L[index] || 'W';
           }
           if (x === 1) { // Right face
-            const index = (1 - y) * 3 + (z + 1);
+            const index = (1 - y) * 3 + (1 - z);
             colors.right = cubeState.R[index] || 'W';
           }
           
