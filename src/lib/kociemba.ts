@@ -240,7 +240,7 @@ function rotateR(cube: CubeState): void {
   cube.B[6] = temp[0];
 }
 
-// Simplified solver - returns basic solution moves
+// Basic layer-by-layer solver (simplified implementation)
 export function solveCube(cube: CubeState): Move[] {
   if (!isValidCube(cube)) {
     throw new Error('Invalid cube configuration');
@@ -251,21 +251,90 @@ export function solveCube(cube: CubeState): Move[] {
     return [];
   }
 
-  // Simple solver using basic patterns
+  // For this simplified implementation, we'll use a basic approach
+  // that tries to solve layer by layer
   const solution: Move[] = [];
+  let currentCube = JSON.parse(JSON.stringify(cube)) as CubeState;
   
-  // This is a simplified approach - in a real implementation,
-  // you would use the full Kociemba algorithm with lookup tables
+  // Simple pattern-based solver
+  // This attempts to bring the cube closer to solved state
+  const solvingMoves = generateBasicSolution(currentCube);
   
-  // For demo purposes, return some common solving moves
-  const basicMoves: Move[] = ['F', 'R', 'U', 'R\'', 'U\'', 'F\''];
-  const intermediateMovess: Move[] = ['R', 'U', 'R\'', 'F', 'R', 'F\''];
-  const advancedMoves: Move[] = ['F', 'R', 'U\'', 'R\'', 'U\'', 'R', 'U', 'R\'', 'F\''];
+  return solvingMoves;
+}
+
+function generateBasicSolution(cube: CubeState): Move[] {
+  // This is a very basic solver that attempts common solving patterns
+  // In a real Kociemba implementation, this would use lookup tables and advanced algorithms
   
-  // Combine moves based on cube complexity
-  solution.push(...basicMoves, ...intermediateMovess, ...advancedMoves);
+  const moves: Move[] = [];
+  let currentState = JSON.parse(JSON.stringify(cube)) as CubeState;
   
-  return solution.slice(0, 20); // Limit to 20 moves for demo
+  // Try to solve with common algorithms
+  const algorithms = [
+    // Cross algorithms
+    ['F', 'R', 'U', 'R\'', 'U\'', 'F\''],
+    ['R', 'U', 'R\'', 'U\''],
+    ['U', 'R', 'U\'', 'R\''],
+    // F2L algorithms  
+    ['R', 'U\'', 'R\'', 'F', 'R', 'F\''],
+    ['F\'', 'U', 'F', 'U', 'F\'', 'U2', 'F'],
+    // OLL algorithms
+    ['F', 'R', 'U', 'R\'', 'U\'', 'F\''],
+    ['R', 'U', 'R\'', 'U', 'R', 'U2', 'R\''],
+    // PLL algorithms
+    ['R\'', 'F', 'R\'', 'B2', 'R', 'F\'', 'R\'', 'B2', 'R2'],
+    ['R', 'U', 'R\'', 'F\'', 'R', 'U', 'R\'', 'U\'', 'R\'', 'F', 'R2', 'U\'', 'R\'']
+  ];
+  
+  // Apply algorithms that improve the cube state
+  for (const algorithm of algorithms) {
+    let testState = JSON.parse(JSON.stringify(currentState)) as CubeState;
+    
+    // Apply the algorithm
+    for (const move of algorithm) {
+      testState = applyMove(testState, move as Move);
+    }
+    
+    // If this algorithm improves the state, add it to solution
+    if (isImprovement(currentState, testState)) {
+      for (const move of algorithm) {
+        moves.push(move as Move);
+        currentState = applyMove(currentState, move as Move);
+      }
+      
+      // If solved, stop
+      if (isSolved(currentState)) {
+        break;
+      }
+    }
+  }
+  
+  return moves.slice(0, 25); // Limit to reasonable number of moves
+}
+
+function isImprovement(oldState: CubeState, newState: CubeState): boolean {
+  // Simple heuristic: count how many pieces are in correct position
+  const oldScore = calculateScore(oldState);
+  const newScore = calculateScore(newState);
+  return newScore > oldScore;
+}
+
+function calculateScore(cube: CubeState): number {
+  let score = 0;
+  const solvedCube = getSolvedCube();
+  
+  // Count correctly positioned pieces
+  Object.keys(cube).forEach(face => {
+    const faceKey = face as keyof CubeState;
+    for (let i = 0; i < 9; i++) {
+      if (cube[faceKey][i] === solvedCube[faceKey][i]) {
+        score++;
+      }
+    }
+  });
+  
+  return score;
 }
 
 function isSolved(cube: CubeState): boolean {
