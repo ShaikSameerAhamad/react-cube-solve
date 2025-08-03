@@ -434,14 +434,14 @@ async function retryWithBackoff<T>(
 export async function solveCube(cube: CubeState): Promise<Move[]> {
   console.log('Solving cube with Kociemba API...');
   console.log('Current cube state:', cube);
-  
+
   if (!isValidCube(cube)) {
     throw new Error('Invalid cube configuration');
   }
 
   const cubeIsSolved = isSolved(cube);
   console.log('Is cube solved?', cubeIsSolved);
-  
+
   if (cubeIsSolved) {
     console.log('Cube is already solved!');
     return [];
@@ -452,8 +452,7 @@ export async function solveCube(cube: CubeState): Promise<Move[]> {
     const cubeString = convertCubeToString(cube);
     console.log('Cube string for API:', cubeString);
     console.log('Cube string length:', cubeString.length);
-    
-    // Validate cube string format
+
     if (cubeString.length !== 54) {
       throw new Error(`Invalid cube string length: ${cubeString.length}, expected 54`);
     }
@@ -464,18 +463,15 @@ export async function solveCube(cube: CubeState): Promise<Move[]> {
     // Use retry logic for the API call
     const result = await retryWithBackoff(async () => {
       console.log('Making API request...');
-      
+
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 30000);
-      
+
       const response = await fetch('https://kociemba-solver-api-706234154179.us-central1.run.app/solve', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
-          'Access-Control-Allow-Headers': 'Content-Type, Accept',
+          'Accept': 'application/json'
         },
         body: JSON.stringify({ input: cubeString }),
         signal: controller.signal
@@ -492,10 +488,10 @@ export async function solveCube(cube: CubeState): Promise<Move[]> {
       }
 
       return await response.json();
-    }, 3, 2000); // 3 retries with 2 second base delay
+    }, 3, 2000); // 3 retries with 2-second base delay
 
     console.log('API result:', result);
-    
+
     if (result.solution) {
       const moves = result.solution.split(' ').filter((move: string) => move.trim() !== '') as Move[];
       console.log(`Solution found (${moves.length} moves):`, moves);
@@ -507,21 +503,22 @@ export async function solveCube(cube: CubeState): Promise<Move[]> {
       console.log('No solution found');
       throw new Error('No solution found by the solver');
     }
-    
+
   } catch (error) {
     console.error('Error calling Kociemba API:', error);
-    
+
     if (error instanceof TypeError && error.message.includes('fetch')) {
       throw new Error('Failed to connect to solver API. The API might be temporarily unavailable. Please try again in a few moments.');
     }
-    
+
     if (error instanceof Error && error.name === 'AbortError') {
       throw new Error('Request timed out. The API is taking too long to respond. Please try again.');
     }
-    
+
     throw error;
   }
 }
+
 
 // Convert CubeState to standard Kociemba string format
 function convertCubeToString(cube: CubeState): string {
