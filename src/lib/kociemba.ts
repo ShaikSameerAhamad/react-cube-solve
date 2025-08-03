@@ -260,12 +260,12 @@ function getMiddleSlicePermutation(cube: CubeState): number {
 // Helper functions for coordinate calculations
 function getEdgePieces(cube: CubeState): string[] {
   const pieces: string[] = [];
-  const faceMap = { U: 0, D: 3, F: 1, B: 2, L: 4, R: 5 };
+  const faceMap: { [key: string]: number } = { U: 0, D: 3, F: 1, B: 2, L: 4, R: 5 };
   
   // Extract edge pieces from cube state
   for (const edge of EDGES) {
     const colors = edge.map(face => {
-      const faceKey = Object.keys(faceMap).find(k => faceMap[k as keyof typeof faceMap] === face) as keyof CubeState;
+      const faceKey = Object.keys(faceMap).find(k => faceMap[k] === face) as keyof CubeState;
       return cube[faceKey][4]; // Center piece color represents face
     });
     pieces.push(colors.join(''));
@@ -276,11 +276,11 @@ function getEdgePieces(cube: CubeState): string[] {
 
 function getCornerPieces(cube: CubeState): string[] {
   const pieces: string[] = [];
+  const faceMap: { [key: string]: number } = { U: 0, D: 3, F: 1, B: 2, L: 4, R: 5 };
   
   for (const corner of CORNERS) {
     const colors = corner.map(face => {
-      const faceKey = Object.keys({ U: 0, D: 3, F: 1, B: 2, L: 4, R: 5 })
-        .find(k => ({ U: 0, D: 3, F: 1, B: 2, L: 4, R: 5 }[k as keyof typeof { U: 0, D: 3, F: 1, B: 2, L: 4, R: 5 }] === face)) as keyof CubeState;
+      const faceKey = Object.keys(faceMap).find(k => faceMap[k] === face) as keyof CubeState;
       return cube[faceKey][4];
     });
     pieces.push(colors.join(''));
@@ -506,4 +506,4 @@ export function getSolvedCube(): CubeState {
     L: Array(9).fill('B') as CubeColor[],
     R: Array(9).fill('G') as CubeColor[],
   };
-}
+    }
