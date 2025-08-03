@@ -376,47 +376,83 @@ function isRedundantMove(move: Move, lastMove: Move): boolean {
 }
 
 // Main Kociemba Two-Phase Algorithm
-export function solveCube(cube: CubeState): Move[] {
+export async function solveCube(cube: CubeState): Promise<Move[]> {
+  console.log('Solving cube with Kociemba API...');
+  
   if (!isValidCube(cube)) {
     throw new Error('Invalid cube configuration');
   }
 
   if (isSolved(cube)) {
+    console.log('Cube is already solved!');
     return [];
   }
 
-  // Phase 1: Reach G1 subgroup
-  let phase1Solution: Move[] | null = null;
-  for (let depth = 0; depth <= 12; depth++) {
-    phase1Solution = searchPhase1(cube, 0, depth);
-    if (phase1Solution) break;
-  }
+  try {
+    // Convert cube state to string format for API
+    const cubeString = convertCubeToString(cube);
+    console.log('Cube string for API:', cubeString);
 
-  if (!phase1Solution) {
-    throw new Error('Could not solve Phase 1');
-  }
+    const response = await fetch('https://kociemba-solver-api.onrender.com/solve', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ cube: cubeString })
+    });
 
-  // Apply Phase 1 solution
-  let intermediateState = cube;
-  for (const move of phase1Solution) {
-    intermediateState = applyMove(intermediateState, move);
-  }
+    if (!response.ok) {
+      throw new Error(`API request failed: ${response.status}`);
+    }
 
-  // Phase 2: Solve within G1 subgroup
-  let phase2Solution: Move[] | null = null;
-  for (let depth = 0; depth <= 18; depth++) {
-    phase2Solution = searchPhase2(intermediateState, 0, depth);
-    if (phase2Solution) break;
-  }
+    const result = await response.json();
+    console.log('API response:', result);
 
-  if (!phase2Solution) {
-    throw new Error('Could not solve Phase 2');
+    if (result.solution) {
+      const moves = result.solution.split(' ').filter((move: string) => move.trim() !== '') as Move[];
+      console.log(`Solution found (${moves.length} moves):`, moves);
+      return moves;
+    } else if (result.error) {
+      console.error('API error:', result.error);
+      return [];
+    } else {
+      console.log('No solution found');
+      return [];
+    }
+    
+  } catch (error) {
+    console.error('Error calling Kociemba API:', error);
+    return [];
   }
+}
 
-  const solution = [...phase1Solution, ...phase2Solution];
+// Convert CubeState to standard Kociemba string format
+function convertCubeToString(cube: CubeState): string {
+  // Standard Kociemba format: 54 characters representing the cube
+  // Order: U(0-8), R(9-17), F(18-26), D(27-35), L(36-44), B(45-53)
+  // Colors: U=0, R=1, F=2, D=3, L=4, B=5
   
-  // Optimize solution by removing redundant moves
-  return optimizeMoves(solution);
+  const colorMap: { [key in CubeColor]: string } = {
+    'W': '0', // Up (White)
+    'R': '1', // Right (Red)  
+    'G': '2', // Front (Green)
+    'Y': '3', // Down (Yellow)
+    'O': '4', // Left (Orange)
+    'B': '5'  // Back (Blue)
+  };
+
+  let result = '';
+  
+  // Add faces in Kociemba order: U, R, F, D, L, B
+  const faceOrder: (keyof CubeState)[] = ['U', 'R', 'F', 'D', 'L', 'B'];
+  
+  for (const face of faceOrder) {
+    for (const color of cube[face]) {
+      result += colorMap[color];
+    }
+  }
+  
+  return result;
 }
 
 // Optimize move sequence

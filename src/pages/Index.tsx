@@ -77,9 +77,11 @@ const Index = () => {
     }
   };
 
-  const handleSolveCube = () => {
+  const handleSolveCube = async () => {
     try {
-      const moves = solveCube(cubeState);
+      toast.success('Solving cube with Kociemba API...');
+      
+      const moves = await solveCube(cubeState);
       setSolution(moves);
       setCurrentStep(0);
       setIsPlaying(false);
