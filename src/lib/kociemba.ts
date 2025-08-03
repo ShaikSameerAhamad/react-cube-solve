@@ -396,17 +396,24 @@ export async function solveCube(cube: CubeState): Promise<Move[]> {
     // Convert cube state to string format for API
     const cubeString = convertCubeToString(cube);
     console.log('Cube string for API:', cubeString);
+    console.log('Cube string length:', cubeString.length);
 
     const response = await fetch('https://kociemba-solver-api.onrender.com/solve', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Accept': 'application/json',
       },
-      body: JSON.stringify({ cube: cubeString })
+      body: JSON.stringify({ input: cubeString })
     });
 
+    console.log('API response status:', response.status);
+    console.log('API response headers:', response.headers);
+
     if (!response.ok) {
-      throw new Error(`API request failed: ${response.status}`);
+      const errorText = await response.text();
+      console.error('API error response:', errorText);
+      throw new Error(`API request failed: ${response.status} - ${errorText}`);
     }
 
     const result = await response.json();
@@ -415,18 +422,21 @@ export async function solveCube(cube: CubeState): Promise<Move[]> {
     if (result.solution) {
       const moves = result.solution.split(' ').filter((move: string) => move.trim() !== '') as Move[];
       console.log(`Solution found (${moves.length} moves):`, moves);
-      return moves;
+      return optimizeMoves(moves);
     } else if (result.error) {
       console.error('API error:', result.error);
-      return [];
+      throw new Error(`Solver error: ${result.error}`);
     } else {
       console.log('No solution found');
-      return [];
+      throw new Error('No solution found by the solver');
     }
     
   } catch (error) {
     console.error('Error calling Kociemba API:', error);
-    return [];
+    if (error instanceof TypeError && error.message.includes('fetch')) {
+      throw new Error('Failed to connect to solver API. Please check your internet connection.');
+    }
+    throw error;
   }
 }
 
@@ -434,16 +444,23 @@ export async function solveCube(cube: CubeState): Promise<Move[]> {
 function convertCubeToString(cube: CubeState): string {
   // Standard Kociemba format: 54 characters representing the cube
   // Order: U(0-8), R(9-17), F(18-26), D(27-35), L(36-44), B(45-53)
-  // Colors: U=0, R=1, F=2, D=3, L=4, B=5
+  // Map each color to its corresponding face letter based on center pieces
   
-  const colorMap: { [key in CubeColor]: string } = {
-    'W': '0', // Up (White)
-    'R': '1', // Right (Red)  
-    'G': '2', // Front (Green)
-    'Y': '3', // Down (Yellow)
-    'O': '4', // Left (Orange)
-    'B': '5'  // Back (Blue)
+  // Determine which color corresponds to which face based on center pieces
+  const centerMap = {
+    U: cube.U[4], // Center of up face
+    R: cube.R[4], // Center of right face  
+    F: cube.F[4], // Center of front face
+    D: cube.D[4], // Center of down face
+    L: cube.L[4], // Center of left face
+    B: cube.B[4]  // Center of back face
   };
+
+  // Create reverse mapping: color -> face letter
+  const colorToFace: { [key in CubeColor]: string } = {} as any;
+  Object.entries(centerMap).forEach(([face, color]) => {
+    colorToFace[color] = face;
+  });
 
   let result = '';
   
@@ -452,7 +469,7 @@ function convertCubeToString(cube: CubeState): string {
   
   for (const face of faceOrder) {
     for (const color of cube[face]) {
-      result += colorMap[color];
+      result += colorToFace[color];
     }
   }
   
