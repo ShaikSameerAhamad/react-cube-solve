@@ -378,12 +378,16 @@ function isRedundantMove(move: Move, lastMove: Move): boolean {
 // Main Kociemba Two-Phase Algorithm
 export async function solveCube(cube: CubeState): Promise<Move[]> {
   console.log('Solving cube with Kociemba API...');
+  console.log('Current cube state:', cube);
   
   if (!isValidCube(cube)) {
     throw new Error('Invalid cube configuration');
   }
 
-  if (isSolved(cube)) {
+  const cubeIsSolved = isSolved(cube);
+  console.log('Is cube solved?', cubeIsSolved);
+  
+  if (cubeIsSolved) {
     console.log('Cube is already solved!');
     return [];
   }

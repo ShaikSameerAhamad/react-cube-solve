@@ -60,7 +60,9 @@ const Index = () => {
 
   const handleApplyColors = () => {
     try {
+      console.log('Input values:', inputValues);
       const newCubeState = parseCubeInput(inputValues);
+      console.log('Parsed cube state:', newCubeState);
       
       if (!isValidCube(newCubeState)) {
         toast.error('Invalid cube configuration. Each color must appear exactly 9 times.');
