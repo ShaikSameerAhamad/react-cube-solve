@@ -61,7 +61,27 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
+				},
+				cube: {
+					white: 'hsl(var(--cube-white))',
+					yellow: 'hsl(var(--cube-yellow))',
+					red: 'hsl(var(--cube-red))',
+					orange: 'hsl(var(--cube-orange))',
+					blue: 'hsl(var(--cube-blue))',
+					green: 'hsl(var(--cube-green))'
 				}
+			},
+			backgroundImage: {
+				'gradient-cube': 'var(--gradient-cube)',
+				'gradient-glow': 'var(--gradient-glow)'
+			},
+			boxShadow: {
+				'cube': 'var(--shadow-cube)',
+				'glow': 'var(--shadow-glow)'
+			},
+			transitionProperty: {
+				'cube': 'var(--transition-cube)',
+				'smooth': 'var(--transition-smooth)'
 			},
 			borderRadius: {
 				lg: 'var(--radius)',
