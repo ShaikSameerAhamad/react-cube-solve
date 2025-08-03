@@ -506,4 +506,4 @@ export function getSolvedCube(): CubeState {
     L: Array(9).fill('B') as CubeColor[],
     R: Array(9).fill('G') as CubeColor[],
   };
-    }
+}
