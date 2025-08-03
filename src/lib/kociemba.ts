@@ -375,6 +375,61 @@ function isRedundantMove(move: Move, lastMove: Move): boolean {
   return opposites[face2] === face1;
 }
 
+// Health check function to wake up the API
+async function healthCheck(): Promise<boolean> {
+  try {
+    console.log('Performing API health check...');
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    
+    const response = await fetch('https://kociemba-solver-api.onrender.com/health', {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+      },
+      signal: controller.signal
+    });
+    
+    clearTimeout(timeoutId);
+    const isHealthy = response.ok;
+    console.log('API health check result:', isHealthy ? 'healthy' : 'unhealthy');
+    return isHealthy;
+  } catch (error) {
+    console.log('API health check failed, API might be sleeping:', error);
+    return false;
+  }
+}
+
+// Retry logic with exponential backoff
+async function retryWithBackoff<T>(
+  fn: () => Promise<T>,
+  maxRetries: number = 3,
+  baseDelay: number = 1000
+): Promise<T> {
+  let lastError: Error;
+  
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      if (attempt > 0) {
+        const delay = baseDelay * Math.pow(2, attempt - 1);
+        console.log(`Retry attempt ${attempt}/${maxRetries} after ${delay}ms delay...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+      
+      return await fn();
+    } catch (error) {
+      lastError = error as Error;
+      console.log(`Attempt ${attempt + 1} failed:`, error);
+      
+      if (attempt === maxRetries) {
+        break;
+      }
+    }
+  }
+  
+  throw lastError!;
+}
+
 // Main Kociemba Two-Phase Algorithm
 export async function solveCube(cube: CubeState): Promise<Move[]> {
   console.log('Solving cube with Kociemba API...');
@@ -397,28 +452,50 @@ export async function solveCube(cube: CubeState): Promise<Move[]> {
     const cubeString = convertCubeToString(cube);
     console.log('Cube string for API:', cubeString);
     console.log('Cube string length:', cubeString.length);
-
-    const response = await fetch('https://kociemba-solver-api.onrender.com/solve', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
-      body: JSON.stringify({ input: cubeString })
-    });
-
-    console.log('API response status:', response.status);
-    console.log('API response headers:', response.headers);
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('API error response:', errorText);
-      throw new Error(`API request failed: ${response.status} - ${errorText}`);
+    
+    // Validate cube string format
+    if (cubeString.length !== 54) {
+      throw new Error(`Invalid cube string length: ${cubeString.length}, expected 54`);
     }
 
-    const result = await response.json();
-    console.log('API response:', result);
+    // Perform health check first to wake up the API if needed
+    await healthCheck();
 
+    // Use retry logic for the API call
+    const result = await retryWithBackoff(async () => {
+      console.log('Making API request...');
+      
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000);
+      
+      const response = await fetch('https://kociemba-solver-api.onrender.com/solve', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Accept',
+        },
+        body: JSON.stringify({ input: cubeString }),
+        signal: controller.signal
+      });
+
+      clearTimeout(timeoutId);
+      console.log('API response status:', response.status);
+      console.log('API response ok:', response.ok);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('API error response:', errorText);
+        throw new Error(`API request failed: ${response.status} - ${errorText}`);
+      }
+
+      return await response.json();
+    }, 3, 2000); // 3 retries with 2 second base delay
+
+    console.log('API result:', result);
+    
     if (result.solution) {
       const moves = result.solution.split(' ').filter((move: string) => move.trim() !== '') as Move[];
       console.log(`Solution found (${moves.length} moves):`, moves);
@@ -433,9 +510,15 @@ export async function solveCube(cube: CubeState): Promise<Move[]> {
     
   } catch (error) {
     console.error('Error calling Kociemba API:', error);
+    
     if (error instanceof TypeError && error.message.includes('fetch')) {
-      throw new Error('Failed to connect to solver API. Please check your internet connection.');
+      throw new Error('Failed to connect to solver API. The API might be temporarily unavailable. Please try again in a few moments.');
     }
+    
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error('Request timed out. The API is taking too long to respond. Please try again.');
+    }
+    
     throw error;
   }
 }
