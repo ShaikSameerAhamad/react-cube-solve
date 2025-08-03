@@ -382,7 +382,7 @@ async function healthCheck(): Promise<boolean> {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000);
     
-    const response = await fetch('https://kociemba-solver-api.onrender.com/health', {
+    const response = await fetch('https://kociemba-solver-api-706234154179.us-central1.run.app/health', {
       method: 'GET',
       headers: {
         'Accept': 'application/json',
@@ -468,7 +468,7 @@ export async function solveCube(cube: CubeState): Promise<Move[]> {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 30000);
       
-      const response = await fetch('https://kociemba-solver-api.onrender.com/solve', {
+      const response = await fetch('https://kociemba-solver-api-706234154179.us-central1.run.app/solve', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
