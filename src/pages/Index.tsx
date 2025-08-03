@@ -79,11 +79,15 @@ const Index = () => {
     }
   };
 
-  const handleSolveCube = async () => {
+  const handleSolveCube = async (cubeToSolve?: CubeState) => {
     try {
       toast.success('Solving cube with Kociemba API...');
       
-      const moves = await solveCube(cubeState);
+      // Use provided cube state or current cube state
+      const targetCube = cubeToSolve || cubeState;
+      console.log('Solving cube state:', targetCube);
+      
+      const moves = await solveCube(targetCube);
       setSolution(moves);
       setCurrentStep(0);
       setIsPlaying(false);
@@ -95,6 +99,31 @@ const Index = () => {
       }
     } catch (error) {
       toast.error('Error solving cube: ' + (error as Error).message);
+    }
+  };
+
+  const handleApplyAndSolve = async () => {
+    try {
+      console.log('Applying colors and solving...');
+      const newCubeState = parseCubeInput(inputValues);
+      console.log('Parsed cube state for apply & solve:', newCubeState);
+      
+      if (!isValidCube(newCubeState)) {
+        toast.error('Invalid cube configuration. Each color must appear exactly 9 times.');
+        return;
+      }
+      
+      // Update the visual state
+      setCubeState(newCubeState);
+      setSolution([]);
+      setCurrentStep(0);
+      setIsPlaying(false);
+      
+      // Solve using the newly parsed cube state directly
+      await handleSolveCube(newCubeState);
+      
+    } catch (error) {
+      toast.error('Error applying colors and solving cube');
     }
   };
 
@@ -216,11 +245,19 @@ const Index = () => {
                 </Button>
                 <Button 
                   variant="default" 
-                  onClick={handleSolveCube}
+                  onClick={() => handleSolveCube()}
                   className="flex items-center gap-2"
                 >
                   <Play className="w-4 h-4" />
                   Solve Cube
+                </Button>
+                <Button 
+                  variant="default" 
+                  onClick={handleApplyAndSolve}
+                  className="flex items-center gap-2 bg-gradient-to-r from-primary to-primary/80"
+                >
+                  <Play className="w-4 h-4" />
+                  Apply & Solve
                 </Button>
               </div>
             </Card>
