@@ -380,7 +380,7 @@ async function healthCheck(): Promise<boolean> {
   try {
     console.log('Performing API health check...');
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
     
     const response = await fetch('https://kociemba-solver-api-706234154179.us-central1.run.app/health', {
       method: 'GET',
@@ -392,7 +392,13 @@ async function healthCheck(): Promise<boolean> {
     
     clearTimeout(timeoutId);
     const isHealthy = response.ok;
-    console.log('API health check result:', isHealthy ? 'healthy' : 'unhealthy');
+    
+    if (isHealthy) {
+      console.log('API health check: healthy');
+    } else {
+      console.log('API health check: unhealthy, status:', response.status);
+    }
+    
     return isHealthy;
   } catch (error) {
     console.log('API health check failed, API might be sleeping:', error);
@@ -404,7 +410,7 @@ async function healthCheck(): Promise<boolean> {
 async function retryWithBackoff<T>(
   fn: () => Promise<T>,
   maxRetries: number = 3,
-  baseDelay: number = 1000
+  baseDelay: number = 2000
 ): Promise<T> {
   let lastError: Error;
   
@@ -458,7 +464,14 @@ export async function solveCube(cube: CubeState): Promise<Move[]> {
     }
 
     // Perform health check first to wake up the API if needed
-    await healthCheck();
+    console.log('Checking API health...');
+    const isHealthy = await healthCheck();
+    
+    if (!isHealthy) {
+      console.log('API is not healthy, but continuing with solve attempt...');
+      // Give the API a moment to wake up after the health check
+      await new Promise(resolve => setTimeout(resolve, 2000));
+    }
 
     // Use retry logic for the API call
     const result = await retryWithBackoff(async () => {
@@ -477,14 +490,23 @@ export async function solveCube(cube: CubeState): Promise<Move[]> {
         signal: controller.signal
       });
 
-      clearTimeout(timeoutId);
-      console.log('API response status:', response.status);
-      console.log('API response ok:', response.ok);
+        clearTimeout(timeoutId);
+        console.log('API response status:', response.status);
+        console.log('API response headers:', Object.fromEntries(response.headers.entries()));
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('API error response:', errorText);
-        throw new Error(`API request failed: ${response.status} - ${errorText}`);
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('API error response:', errorText);
+          throw new Error(`API request failed: ${response.status} - ${errorText}`);
+        }
+
+        const responseData = await response.json();
+        console.log('API response data:', responseData);
+        return responseData;
+        
+      } catch (error) {
+        clearTimeout(timeoutId);
+        throw error;
       }
 
       return await response.json();
@@ -506,6 +528,7 @@ export async function solveCube(cube: CubeState): Promise<Move[]> {
 
   } catch (error) {
     console.error('Error calling Kociemba API:', error);
+<<<<<<< HEAD
 
     if (error instanceof TypeError && error.message.includes('fetch')) {
       throw new Error('Failed to connect to solver API. The API might be temporarily unavailable. Please try again in a few moments.');
@@ -513,6 +536,32 @@ export async function solveCube(cube: CubeState): Promise<Move[]> {
 
     if (error instanceof Error && error.name === 'AbortError') {
       throw new Error('Request timed out. The API is taking too long to respond. Please try again.');
+=======
+    
+    // More specific error handling
+    if (error instanceof TypeError) {
+      if (error.message.includes('fetch')) {
+        throw new Error('Network error: Failed to connect to solver API. Please check your internet connection and try again.');
+      }
+      if (error.message.includes('CORS')) {
+        throw new Error('CORS error: Unable to access the solver API due to browser security restrictions.');
+      }
+    }
+    
+    if (error instanceof Error) {
+      if (error.name === 'AbortError') {
+        throw new Error('Request timed out: The API is taking too long to respond. Please try again.');
+      }
+      
+      if (error.message.includes('Failed to fetch')) {
+        throw new Error('Network error: Unable to reach the solver API. The service might be temporarily unavailable. Please try again in a few moments.');
+      }
+    }
+    
+    // Re-throw the original error if it's already a user-friendly message
+    if (error instanceof Error && error.message.startsWith('API request failed:')) {
+      throw error;
+>>>>>>> 3fcec051591d1fe10620025cedfed54a02ff0be7
     }
 
     throw error;
