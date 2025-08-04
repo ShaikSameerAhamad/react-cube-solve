@@ -2,7 +2,7 @@ import { useRef, useEffect, useState } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
-import { CubeState, CubeColor } from '@/lib/kociemba';
+import { CubeState, CubeColor, Move } from '@/lib/kociemba';
 
 interface CubieProps {
   position: [number, number, number];
@@ -46,11 +46,27 @@ interface RubiksCube3DProps {
   cubeState: CubeState;
   isAnimating?: boolean;
   currentMove?: string;
+  moveQueue?: Move[];
+  onMoveComplete?: () => void;
 }
 
-export function RubiksCube3D({ cubeState, isAnimating = false, currentMove }: RubiksCube3DProps) {
+export function RubiksCube3D({ cubeState, isAnimating = false, currentMove, moveQueue = [], onMoveComplete }: RubiksCube3DProps) {
   const groupRef = useRef<THREE.Group>(null);
-  const [rotationSpeed] = useState(0.01);
+  const [animationState, setAnimationState] = useState<{
+    isAnimating: boolean;
+    currentMove: Move | null;
+    startTime: number;
+    duration: number;
+    startRotation: THREE.Euler;
+    targetRotation: THREE.Euler;
+  }>({
+    isAnimating: false,
+    currentMove: null,
+    startTime: 0,
+    duration: 300,
+    startRotation: new THREE.Euler(),
+    targetRotation: new THREE.Euler()
+  });
 
   // Generate cubie colors based on cube state
   const generateCubieColors = () => {
@@ -104,9 +120,100 @@ export function RubiksCube3D({ cubeState, isAnimating = false, currentMove }: Ru
 
   const cubies = generateCubieColors();
 
+  // Parse move string to get rotation info
+  const parseMoveString = (move: Move) => {
+    const face = move[0];
+    const modifier = move.slice(1);
+    let angle = Math.PI / 2; // 90 degrees
+    
+    if (modifier === '2') {
+      angle = Math.PI; // 180 degrees
+    } else if (modifier === "'") {
+      angle = -Math.PI / 2; // -90 degrees
+    }
+    
+    return { face, angle };
+  };
+
+  // Start animation for a move
+  const startMoveAnimation = (move: Move) => {
+    if (!groupRef.current) return;
+    
+    const { face, angle } = parseMoveString(move);
+    const startRotation = groupRef.current.rotation.clone();
+    const targetRotation = startRotation.clone();
+    
+    // Apply rotation based on face
+    switch (face) {
+      case 'R':
+        targetRotation.x += angle;
+        break;
+      case 'L':
+        targetRotation.x -= angle;
+        break;
+      case 'U':
+        targetRotation.y += angle;
+        break;
+      case 'D':
+        targetRotation.y -= angle;
+        break;
+      case 'F':
+        targetRotation.z += angle;
+        break;
+      case 'B':
+        targetRotation.z -= angle;
+        break;
+    }
+    
+    setAnimationState({
+      isAnimating: true,
+      currentMove: move,
+      startTime: Date.now(),
+      duration: 300,
+      startRotation,
+      targetRotation
+    });
+  };
+
+  // Process move queue
+  useEffect(() => {
+    if (!animationState.isAnimating && moveQueue.length > 0) {
+      startMoveAnimation(moveQueue[0]);
+    }
+  }, [moveQueue, animationState.isAnimating]);
+
+  // Easing function
+  const easeInOut = (t: number) => {
+    return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+  };
+
   useFrame(() => {
-    if (!isAnimating && groupRef.current) {
-      groupRef.current.rotation.y += rotationSpeed;
+    if (animationState.isAnimating && groupRef.current) {
+      const elapsed = Date.now() - animationState.startTime;
+      const progress = Math.min(elapsed / animationState.duration, 1);
+      const easedProgress = easeInOut(progress);
+      
+      // Interpolate rotation
+      groupRef.current.rotation.x = THREE.MathUtils.lerp(
+        animationState.startRotation.x,
+        animationState.targetRotation.x,
+        easedProgress
+      );
+      groupRef.current.rotation.y = THREE.MathUtils.lerp(
+        animationState.startRotation.y,
+        animationState.targetRotation.y,
+        easedProgress
+      );
+      groupRef.current.rotation.z = THREE.MathUtils.lerp(
+        animationState.startRotation.z,
+        animationState.targetRotation.z,
+        easedProgress
+      );
+      
+      if (progress >= 1) {
+        setAnimationState(prev => ({ ...prev, isAnimating: false }));
+        onMoveComplete?.();
+      }
     }
   });
 
@@ -127,16 +234,24 @@ interface RubiksCubeCanvasProps {
   cubeState: CubeState;
   isAnimating?: boolean;
   currentMove?: string;
+  moveQueue?: Move[];
+  onMoveComplete?: () => void;
 }
 
-export function RubiksCubeCanvas({ cubeState, isAnimating, currentMove }: RubiksCubeCanvasProps) {
+export function RubiksCubeCanvas({ cubeState, isAnimating, currentMove, moveQueue, onMoveComplete }: RubiksCubeCanvasProps) {
   return (
     <div className="w-full h-96 bg-background border border-border rounded-lg overflow-hidden">
       <Canvas camera={{ position: [5, 5, 5], fov: 50 }}>
         <ambientLight intensity={0.6} />
         <directionalLight position={[10, 10, 5]} intensity={0.8} />
         <directionalLight position={[-10, -10, -5]} intensity={0.4} />
-        <RubiksCube3D cubeState={cubeState} isAnimating={isAnimating} currentMove={currentMove} />
+        <RubiksCube3D 
+          cubeState={cubeState} 
+          isAnimating={isAnimating} 
+          currentMove={currentMove}
+          moveQueue={moveQueue}
+          onMoveComplete={onMoveComplete}
+        />
         <OrbitControls enablePan={true} enableZoom={true} enableRotate={true} />
       </Canvas>
     </div>
