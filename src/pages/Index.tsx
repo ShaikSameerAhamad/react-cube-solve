@@ -33,6 +33,7 @@ const Index = () => {
   const [currentStep, setCurrentStep] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
+  const [moveQueue, setMoveQueue] = useState<Move[]>([]);
 
   const handleInputChange = (face: string, value: string) => {
     setInputValues(prev => ({
@@ -128,19 +129,38 @@ const Index = () => {
   };
 
   const handleStepChange = (step: number) => {
+    if (step === currentStep) return;
+    
     setCurrentStep(step);
     setIsAnimating(true);
     
-    // Apply moves up to current step
-    let currentCube = parseCubeInput(inputValues);
-    for (let i = 0; i < step; i++) {
-      if (solution[i]) {
-        currentCube = applyMove(currentCube, solution[i]);
+    // If moving forward by one step, animate the move
+    if (step === currentStep + 1 && solution[currentStep]) {
+      setMoveQueue([solution[currentStep]]);
+    } else {
+      // For jumps or backward moves, apply immediately
+      let currentCube = parseCubeInput(inputValues);
+      for (let i = 0; i < step; i++) {
+        if (solution[i]) {
+          currentCube = applyMove(currentCube, solution[i]);
+        }
       }
+      setCubeState(currentCube);
+      setIsAnimating(false);
     }
-    setCubeState(currentCube);
+  };
+
+  const handleMoveComplete = () => {
+    // Apply the move to the cube state after animation
+    if (moveQueue.length > 0) {
+      const move = moveQueue[0];
+      setCubeState(prev => applyMove(prev, move));
+      setMoveQueue(prev => prev.slice(1));
+    }
     
-    setTimeout(() => setIsAnimating(false), 500);
+    if (moveQueue.length <= 1) {
+      setIsAnimating(false);
+    }
   };
 
   const handlePlayToggle = () => {
@@ -150,6 +170,7 @@ const Index = () => {
   const handleSolutionReset = () => {
     setCurrentStep(0);
     setIsPlaying(false);
+    setMoveQueue([]);
     setCubeState(parseCubeInput(inputValues));
     toast('Solution reset to starting position');
   };
@@ -183,6 +204,8 @@ const Index = () => {
                 cubeState={cubeState} 
                 isAnimating={isAnimating}
                 currentMove={solution[currentStep - 1]}
+                moveQueue={moveQueue}
+                onMoveComplete={handleMoveComplete}
               />
             </Card>
 

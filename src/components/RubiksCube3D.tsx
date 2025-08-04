@@ -7,7 +7,6 @@ import { CubeState, CubeColor, Move } from '@/lib/kociemba';
 interface CubieProps {
   position: [number, number, number];
   colors: { [face: string]: CubeColor };
-  rotationGroup?: THREE.Group;
 }
 
 const colorMap = {
@@ -52,23 +51,20 @@ interface RubiksCube3DProps {
 
 export function RubiksCube3D({ cubeState, isAnimating = false, currentMove, moveQueue = [], onMoveComplete }: RubiksCube3DProps) {
   const groupRef = useRef<THREE.Group>(null);
+  const cubieRefs = useRef<THREE.Mesh[]>([]);
+  
   const [animationState, setAnimationState] = useState<{
     isAnimating: boolean;
     currentMove: Move | null;
     startTime: number;
     duration: number;
-    startRotation: THREE.Euler;
-    targetRotation: THREE.Euler;
-  }>({
-    isAnimating: false,
-    currentMove: null,
-    startTime: 0,
-    duration: 300,
-    startRotation: new THREE.Euler(),
-    targetRotation: new THREE.Euler()
-  });
+    targetAngle: number;
+    axis: 'x' | 'y' | 'z';
+    face: string;
+    animatingCubies: number[];
+  } | null>(null);
 
-  // Generate cubie colors based on cube state
+  // Generate cubie colors and positions based on cube state
   const generateCubieColors = () => {
     const cubies: { position: [number, number, number]; colors: { [face: string]: CubeColor } }[] = [];
     
@@ -79,9 +75,6 @@ export function RubiksCube3D({ cubeState, isAnimating = false, currentMove, move
           const colors: { [face: string]: CubeColor } = {};
           
           // Map cube state to cubie positions
-          // This is a simplified mapping - in a real implementation,
-          // you'd need more complex position-to-face mapping
-          
           if (y === 1) { // Top face
             const index = (z + 1) * 3 + (x + 1);
             colors.top = cubeState.U[index] || 'W';
@@ -120,6 +113,38 @@ export function RubiksCube3D({ cubeState, isAnimating = false, currentMove, move
 
   const cubies = generateCubieColors();
 
+  // Get cubies that belong to a face
+  const getCubiesForFace = (face: string): number[] => {
+    const indices: number[] = [];
+    
+    cubies.forEach((cubie, index) => {
+      const [x, y, z] = cubie.position;
+      
+      switch (face) {
+        case 'R':
+          if (Math.abs(x - 1.02) < 0.01) indices.push(index);
+          break;
+        case 'L':
+          if (Math.abs(x + 1.02) < 0.01) indices.push(index);
+          break;
+        case 'U':
+          if (Math.abs(y - 1.02) < 0.01) indices.push(index);
+          break;
+        case 'D':
+          if (Math.abs(y + 1.02) < 0.01) indices.push(index);
+          break;
+        case 'F':
+          if (Math.abs(z - 1.02) < 0.01) indices.push(index);
+          break;
+        case 'B':
+          if (Math.abs(z + 1.02) < 0.01) indices.push(index);
+          break;
+      }
+    });
+    
+    return indices;
+  };
+
   // Parse move string to get rotation info
   const parseMoveString = (move: Move) => {
     const face = move[0];
@@ -132,55 +157,57 @@ export function RubiksCube3D({ cubeState, isAnimating = false, currentMove, move
       angle = -Math.PI / 2; // -90 degrees
     }
     
-    return { face, angle };
+    let axis: 'x' | 'y' | 'z' = 'y';
+    switch (face) {
+      case 'R':
+        axis = 'x';
+        break;
+      case 'L':
+        axis = 'x';
+        angle = -angle;
+        break;
+      case 'U':
+        axis = 'y';
+        break;
+      case 'D':
+        axis = 'y';
+        angle = -angle;
+        break;
+      case 'F':
+        axis = 'z';
+        break;
+      case 'B':
+        axis = 'z';
+        angle = -angle;
+        break;
+    }
+    
+    return { face, angle, axis };
   };
 
   // Start animation for a move
   const startMoveAnimation = (move: Move) => {
-    if (!groupRef.current) return;
-    
-    const { face, angle } = parseMoveString(move);
-    const startRotation = groupRef.current.rotation.clone();
-    const targetRotation = startRotation.clone();
-    
-    // Apply rotation based on face
-    switch (face) {
-      case 'R':
-        targetRotation.x += angle;
-        break;
-      case 'L':
-        targetRotation.x -= angle;
-        break;
-      case 'U':
-        targetRotation.y += angle;
-        break;
-      case 'D':
-        targetRotation.y -= angle;
-        break;
-      case 'F':
-        targetRotation.z += angle;
-        break;
-      case 'B':
-        targetRotation.z -= angle;
-        break;
-    }
+    const { face, angle, axis } = parseMoveString(move);
+    const animatingCubies = getCubiesForFace(face);
     
     setAnimationState({
       isAnimating: true,
       currentMove: move,
       startTime: Date.now(),
       duration: 300,
-      startRotation,
-      targetRotation
+      targetAngle: angle,
+      axis,
+      face,
+      animatingCubies
     });
   };
 
   // Process move queue
   useEffect(() => {
-    if (!animationState.isAnimating && moveQueue.length > 0) {
+    if ((!animationState || !animationState.isAnimating) && moveQueue.length > 0) {
       startMoveAnimation(moveQueue[0]);
     }
-  }, [moveQueue, animationState.isAnimating]);
+  }, [moveQueue, animationState]);
 
   // Easing function
   const easeInOut = (t: number) => {
@@ -188,30 +215,86 @@ export function RubiksCube3D({ cubeState, isAnimating = false, currentMove, move
   };
 
   useFrame(() => {
-    if (animationState.isAnimating && groupRef.current) {
+    if (animationState?.isAnimating && cubieRefs.current.length > 0) {
       const elapsed = Date.now() - animationState.startTime;
       const progress = Math.min(elapsed / animationState.duration, 1);
       const easedProgress = easeInOut(progress);
       
-      // Interpolate rotation
-      groupRef.current.rotation.x = THREE.MathUtils.lerp(
-        animationState.startRotation.x,
-        animationState.targetRotation.x,
-        easedProgress
-      );
-      groupRef.current.rotation.y = THREE.MathUtils.lerp(
-        animationState.startRotation.y,
-        animationState.targetRotation.y,
-        easedProgress
-      );
-      groupRef.current.rotation.z = THREE.MathUtils.lerp(
-        animationState.startRotation.z,
-        animationState.targetRotation.z,
-        easedProgress
-      );
+      const currentAngle = animationState.targetAngle * easedProgress;
+      
+      // Get center point for rotation
+      let center = new THREE.Vector3();
+      switch (animationState.face) {
+        case 'R':
+          center.set(1.02, 0, 0);
+          break;
+        case 'L':
+          center.set(-1.02, 0, 0);
+          break;
+        case 'U':
+          center.set(0, 1.02, 0);
+          break;
+        case 'D':
+          center.set(0, -1.02, 0);
+          break;
+        case 'F':
+          center.set(0, 0, 1.02);
+          break;
+        case 'B':
+          center.set(0, 0, -1.02);
+          break;
+      }
+      
+      // Rotate the animating cubies
+      animationState.animatingCubies.forEach(cubieIndex => {
+        const cubie = cubieRefs.current[cubieIndex];
+        if (cubie) {
+          // Get original position
+          const originalPos = new THREE.Vector3(...cubies[cubieIndex].position);
+          
+          // Translate to origin
+          const relativePos = originalPos.clone().sub(center);
+          
+          // Create rotation matrix
+          let rotationMatrix = new THREE.Matrix4();
+          if (animationState.axis === 'x') {
+            rotationMatrix.makeRotationX(currentAngle);
+          } else if (animationState.axis === 'y') {
+            rotationMatrix.makeRotationY(currentAngle);
+          } else if (animationState.axis === 'z') {
+            rotationMatrix.makeRotationZ(currentAngle);
+          }
+          
+          // Apply rotation
+          relativePos.applyMatrix4(rotationMatrix);
+          
+          // Translate back and set position
+          const finalPos = relativePos.add(center);
+          cubie.position.copy(finalPos);
+          
+          // Also rotate the cubie itself
+          cubie.rotation.set(0, 0, 0);
+          if (animationState.axis === 'x') {
+            cubie.rotation.x = currentAngle;
+          } else if (animationState.axis === 'y') {
+            cubie.rotation.y = currentAngle;
+          } else if (animationState.axis === 'z') {
+            cubie.rotation.z = currentAngle;
+          }
+        }
+      });
       
       if (progress >= 1) {
-        setAnimationState(prev => ({ ...prev, isAnimating: false }));
+        // Reset positions and rotations
+        animationState.animatingCubies.forEach(cubieIndex => {
+          const cubie = cubieRefs.current[cubieIndex];
+          if (cubie) {
+            cubie.position.set(...cubies[cubieIndex].position);
+            cubie.rotation.set(0, 0, 0);
+          }
+        });
+        
+        setAnimationState(null);
         onMoveComplete?.();
       }
     }
@@ -220,11 +303,21 @@ export function RubiksCube3D({ cubeState, isAnimating = false, currentMove, move
   return (
     <group ref={groupRef}>
       {cubies.map((cubie, index) => (
-        <Cubie
+        <mesh
           key={index}
+          ref={(ref) => {
+            if (ref) cubieRefs.current[index] = ref;
+          }}
           position={cubie.position}
-          colors={cubie.colors}
-        />
+        >
+          <boxGeometry args={[0.95, 0.95, 0.95]} />
+          <meshLambertMaterial color={colorMap[cubie.colors.right || 'W']} attach="material-0" />
+          <meshLambertMaterial color={colorMap[cubie.colors.left || 'W']} attach="material-1" />
+          <meshLambertMaterial color={colorMap[cubie.colors.top || 'W']} attach="material-2" />
+          <meshLambertMaterial color={colorMap[cubie.colors.bottom || 'W']} attach="material-3" />
+          <meshLambertMaterial color={colorMap[cubie.colors.front || 'W']} attach="material-4" />
+          <meshLambertMaterial color={colorMap[cubie.colors.back || 'W']} attach="material-5" />
+        </mesh>
       ))}
     </group>
   );
