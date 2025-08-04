@@ -490,26 +490,19 @@ export async function solveCube(cube: CubeState): Promise<Move[]> {
         signal: controller.signal
       });
 
-        clearTimeout(timeoutId);
-        console.log('API response status:', response.status);
-        console.log('API response headers:', Object.fromEntries(response.headers.entries()));
+      clearTimeout(timeoutId);
+      console.log('API response status:', response.status);
+      console.log('API response headers:', Object.fromEntries(response.headers.entries()));
 
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error('API error response:', errorText);
-          throw new Error(`API request failed: ${response.status} - ${errorText}`);
-        }
-
-        const responseData = await response.json();
-        console.log('API response data:', responseData);
-        return responseData;
-        
-      } catch (error) {
-        clearTimeout(timeoutId);
-        throw error;
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('API error response:', errorText);
+        throw new Error(`API request failed: ${response.status} - ${errorText}`);
       }
 
-      return await response.json();
+      const responseData = await response.json();
+      console.log('API response data:', responseData);
+      return responseData;
     }, 3, 2000); // 3 retries with 2-second base delay
 
     console.log('API result:', result);
@@ -528,15 +521,6 @@ export async function solveCube(cube: CubeState): Promise<Move[]> {
 
   } catch (error) {
     console.error('Error calling Kociemba API:', error);
-<<<<<<< HEAD
-
-    if (error instanceof TypeError && error.message.includes('fetch')) {
-      throw new Error('Failed to connect to solver API. The API might be temporarily unavailable. Please try again in a few moments.');
-    }
-
-    if (error instanceof Error && error.name === 'AbortError') {
-      throw new Error('Request timed out. The API is taking too long to respond. Please try again.');
-=======
     
     // More specific error handling
     if (error instanceof TypeError) {
@@ -561,7 +545,6 @@ export async function solveCube(cube: CubeState): Promise<Move[]> {
     // Re-throw the original error if it's already a user-friendly message
     if (error instanceof Error && error.message.startsWith('API request failed:')) {
       throw error;
->>>>>>> 3fcec051591d1fe10620025cedfed54a02ff0be7
     }
 
     throw error;
