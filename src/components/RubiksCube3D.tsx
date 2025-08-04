@@ -265,10 +265,10 @@ export function RubiksCube3D({ cubeState, isAnimating = false, currentMove, onMo
       }
     }
 
-    // Idle rotation when not animating moves
-    if (!animationState?.isAnimating && groupRef.current) {
-      groupRef.current.rotation.y += rotationSpeed;
-    }
+    // Idle rotation disabled for better move visibility
+    // if (!animationState?.isAnimating && groupRef.current) {
+    //   groupRef.current.rotation.y += rotationSpeed;
+    // }
   });
 
   return (
