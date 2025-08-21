@@ -1,4 +1,4 @@
-# React Cube Solve
+# 3D Rubik's Cube Solver
 
 A 3D interactive Rubik's Cube solver built with React and powered by the Kociemba Two-Phase Algorithm.
 
