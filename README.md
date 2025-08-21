@@ -1,73 +1,35 @@
-# Welcome to your Lovable project
+# React Cube Solve
 
-## Project info
+A 3D interactive Rubik's Cube solver built with React and powered by the Kociemba Two-Phase Algorithm.
 
-**URL**: https://lovable.dev/projects/a066495c-87aa-4437-bf23-76a03b4579f4
+## 🚀 Live Demo
 
-## How can I edit this code?
+**[https://react-cube-solve.lovable.app](https://react-cube-solve.lovable.app)**
 
-There are several ways of editing your application.
+## 🛠 Technologies Used
 
-**Use Lovable**
+### Frontend
+- **Vite** - Build tool and development server
+- **TypeScript** - Type-safe JavaScript
+- **React** - UI library
+- **shadcn-ui** - React component library
+- **Tailwind CSS** - Utility-first CSS framework
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/a066495c-87aa-4437-bf23-76a03b4579f4) and start prompting.
+### Backend
+- **Flask** - Python web framework
+- **Kociemba Algorithm Library** - Two-phase algorithm implementation
+- **Google Cloud Run** - Serverless deployment platform
 
-Changes made via Lovable will be committed automatically to this repo.
+## ✨ Features
 
-**Use your preferred IDE**
+- **3D Rubik's Cube Representation** - Built with React Three Fiber for realistic 3D visualization
+- **Interactive Controls** - Manipulate and rotate the cube with intuitive controls
+- **Optimal Cube Solving** - Uses Kociemba Two-Phase Algorithm for efficient solutions
+- **Backend API Integration** - Flask API deployed on Google Cloud Run for algorithm processing
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+## 🏗 Architecture
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
-```
-
-**Edit a file directly in GitHub**
-
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
-
-**Use GitHub Codespaces**
-
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/a066495c-87aa-4437-bf23-76a03b4579f4) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+The project consists of:
+- **Frontend**: React application with 3D cube interface
+- **Backend**: Flask API implementing Kociemba algorithm, deployed on Google Cloud Run
+- **Integration**: Frontend communicates with backend API to solve cube configurations
